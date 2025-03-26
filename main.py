@@ -8,26 +8,45 @@ import dbPieza as db_pieza
 import reparacion as rep
 import db_reparacion as db_rep
 from datetime import datetime
+import cliente
+import db_cliente as db_cliente
+import vehiculo
+import db_vehiculo
 
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("Login")
+        self.root.title("Inicio de Sesión")
+        
+        # Crear el frame principal
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Crear el login frame
         self.create_login_frame()
+        
+        # Agregar créditos en la parte inferior
+        credits_frame = ttk.Frame(self.root, padding="5")
+        credits_frame.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        ttk.Label(
+            credits_frame, 
+            text="Creado por: Uziel Hashid Ibarra Rivas",
+            font=('Arial', 8, 'italic')
+        ).grid(row=0, column=0, pady=5)
 
     def create_login_frame(self):
         self.login_frame = ttk.Frame(self.root, padding="10")
         self.login_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        ttk.Label(self.login_frame, text="Username:").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(self.login_frame, text="Usuario:").grid(row=0, column=0, sticky=tk.W)
         self.username = ttk.Entry(self.login_frame)
         self.username.grid(row=0, column=1, sticky=(tk.W, tk.E))
 
-        ttk.Label(self.login_frame, text="Password:").grid(row=1, column=0, sticky=tk.W)
+        ttk.Label(self.login_frame, text="Contraseña:").grid(row=1, column=0, sticky=tk.W)
         self.password = ttk.Entry(self.login_frame, show="*")
         self.password.grid(row=1, column=1, sticky=(tk.W, tk.E))
 
-        self.login_button = ttk.Button(self.login_frame, text="Login", command=self.login)
+        self.login_button = ttk.Button(self.login_frame, text="Iniciar Sesión", command=self.login)
         self.login_button.grid(row=2, column=0, columnspan=2)
 
     def login(self):
@@ -49,19 +68,23 @@ class App:
         self.main_menu = ttk.Frame(self.root, padding="10")
         self.main_menu.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        buttons = ["Users", "Customers", "Cars", "Parts", "Repair", "Exit"]
+        buttons = ["Usuarios", "Clientes", "Vehículos", "Piezas", "Reparaciones", "Salir"]
         for idx, text in enumerate(buttons):
             button = ttk.Button(self.main_menu, text=text, command=lambda t=text: self.menu_action(t))
             button.grid(row=0, column=idx, padx=5, pady=5)
 
     def menu_action(self, action):
-        if action == "Users":
+        if action == "Usuarios":
             self.create_user_interface()
-        elif action == "Parts":
+        elif action == "Clientes":
+            self.create_customer_interface()
+        elif action == "Vehículos":
+            self.create_vehicle_interface()
+        elif action == "Piezas":
             self.create_parts_interface()
-        elif action == "Repair":
+        elif action == "Reparaciones":
             self.create_repairs_interface()
-        elif action == "Exit":
+        elif action == "Salir":
             self.root.quit()
 
     def create_user_interface(self):
@@ -425,9 +448,210 @@ class App:
         db_repair.remove(repair)
         messagebox.showinfo("Info", "Repair removed successfully")
 
+    def create_customer_interface(self):
+        self.clear_window()
+        
+        self.customer_frame = ttk.Frame(self.root, padding="10")
+        self.customer_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        ttk.Label(self.customer_frame, text="Ingrese ID a buscar:").grid(row=0, column=0, sticky=tk.W)
+        self.search_customer_id = ttk.Entry(self.customer_frame)
+        self.search_customer_id.grid(row=0, column=1, sticky=(tk.W, tk.E))
+
+        self.search_customer_button = ttk.Button(self.customer_frame, text="Buscar", command=self.search_customer)
+        self.search_customer_button.grid(row=0, column=2)
+
+        # Campos del cliente
+        fields = [
+            ("ID:", "customer_id"),
+            ("Nombre:", "customer_name"),
+            ("Teléfono:", "customer_phone"),
+            ("RFC:", "customer_rfc"),
+            ("Email:", "customer_email")
+        ]
+
+        for i, (label, attr) in enumerate(fields, start=1):
+            ttk.Label(self.customer_frame, text=label).grid(row=i, column=0, sticky=tk.W)
+            setattr(self, attr, ttk.Entry(self.customer_frame))
+            getattr(self, attr).grid(row=i, column=1, sticky=(tk.W, tk.E))
+
+        # Botones
+        self.customer_button_frame = ttk.Frame(self.customer_frame, padding="10")
+        self.customer_button_frame.grid(row=len(fields)+1, column=0, columnspan=2, pady=10)
+
+        buttons = [
+            ("Nuevo", self.new_customer),
+            ("Guardar", self.save_customer),
+            ("Cancelar", self.create_main_menu),
+            ("Editar", self.edit_customer),
+            ("Eliminar", self.remove_customer)
+        ]
+
+        for i, (text, command) in enumerate(buttons):
+            ttk.Button(self.customer_button_frame, text=text, command=command).grid(row=0, column=i, padx=5)
+
     def clear_window(self):
         for widget in self.root.winfo_children():
             widget.destroy()
+
+    def new_customer(self):
+        self.customer_id.delete(0, tk.END)
+        self.customer_name.delete(0, tk.END)
+        self.customer_phone.delete(0, tk.END)
+        self.customer_rfc.delete(0, tk.END)
+        self.customer_email.delete(0, tk.END)
+
+    def search_customer(self):
+        db_customer = db_cliente.DbCliente()
+        customer = cliente.Cliente()
+        customer.setId(self.search_customer_id.get())
+        found_customer = db_customer.search(customer)
+        if found_customer:
+            self.customer_id.delete(0, tk.END)
+            self.customer_id.insert(0, found_customer.getId())
+            self.customer_name.delete(0, tk.END)
+            self.customer_name.insert(0, found_customer.getNombre())
+            self.customer_phone.delete(0, tk.END)
+            self.customer_phone.insert(0, found_customer.getTelefono())
+            self.customer_rfc.delete(0, tk.END)
+            self.customer_rfc.insert(0, found_customer.getRfc())
+            self.customer_email.delete(0, tk.END)
+            self.customer_email.insert(0, found_customer.getEmail())
+        else:
+            messagebox.showerror("Error", "Cliente no encontrado")
+
+    def save_customer(self):
+        db_customer = db_cliente.DbCliente()
+        customer = cliente.Cliente()
+        customer.setId(self.customer_id.get())
+        customer.setNombre(self.customer_name.get())
+        customer.setTelefono(self.customer_phone.get())
+        customer.setRfc(self.customer_rfc.get())
+        customer.setEmail(self.customer_email.get())
+        
+        db_customer.save(customer)
+        messagebox.showinfo("Info", "Cliente guardado exitosamente")
+
+    def edit_customer(self):
+        db_customer = db_cliente.DbCliente()
+        customer = cliente.Cliente()
+        customer.setId(self.customer_id.get())
+        customer.setNombre(self.customer_name.get())
+        customer.setTelefono(self.customer_phone.get())
+        customer.setRfc(self.customer_rfc.get())
+        customer.setEmail(self.customer_email.get())
+        
+        db_customer.edit(customer)
+        messagebox.showinfo("Info", "Cliente editado exitosamente")
+
+    def remove_customer(self):
+        db_customer = db_cliente.DbCliente()
+        customer = cliente.Cliente()
+        customer.setId(self.customer_id.get())
+        
+        db_customer.remove(customer)
+        messagebox.showinfo("Info", "Cliente eliminado exitosamente")
+
+    def create_vehicle_interface(self):
+        self.clear_window()
+        
+        self.vehicle_frame = ttk.Frame(self.root, padding="10")
+        self.vehicle_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # Búsqueda
+        ttk.Label(self.vehicle_frame, text="Ingrese Matrícula a buscar:").grid(row=0, column=0, sticky=tk.W)
+        self.search_matricula = ttk.Entry(self.vehicle_frame)
+        self.search_matricula.grid(row=0, column=1, sticky=(tk.W, tk.E))
+
+        self.search_vehicle_button = ttk.Button(self.vehicle_frame, text="Buscar", command=self.search_vehicle)
+        self.search_vehicle_button.grid(row=0, column=2)
+
+        # Campos del vehículo
+        fields = [
+            ("Matrícula:", "vehicle_matricula"),
+            ("Cliente ID:", "vehicle_cliente"),
+            ("Marca:", "vehicle_marca"),
+            ("Modelo:", "vehicle_modelo"),
+            ("Color:", "vehicle_color")
+        ]
+
+        for i, (label, attr) in enumerate(fields, start=1):
+            ttk.Label(self.vehicle_frame, text=label).grid(row=i, column=0, sticky=tk.W)
+            setattr(self, attr, ttk.Entry(self.vehicle_frame))
+            getattr(self, attr).grid(row=i, column=1, sticky=(tk.W, tk.E))
+
+        # Botones
+        self.vehicle_button_frame = ttk.Frame(self.vehicle_frame, padding="10")
+        self.vehicle_button_frame.grid(row=len(fields)+1, column=0, columnspan=2, pady=10)
+
+        buttons = [
+            ("Nuevo", self.new_vehicle),
+            ("Guardar", self.save_vehicle),
+            ("Cancelar", self.create_main_menu),
+            ("Editar", self.edit_vehicle),
+            ("Eliminar", self.remove_vehicle)
+        ]
+
+        for i, (text, command) in enumerate(buttons):
+            ttk.Button(self.vehicle_button_frame, text=text, command=command).grid(row=0, column=i, padx=5)
+
+    def new_vehicle(self):
+        self.vehicle_matricula.delete(0, tk.END)
+        self.vehicle_cliente.delete(0, tk.END)
+        self.vehicle_marca.delete(0, tk.END)
+        self.vehicle_modelo.delete(0, tk.END)
+        self.vehicle_color.delete(0, tk.END)
+
+    def search_vehicle(self):
+        db_vehicle = db_vehiculo.DbVehiculo()
+        vehicle = vehiculo.Vehiculo()
+        vehicle.setMatricula(self.search_matricula.get())
+        found_vehicle = db_vehicle.search(vehicle)
+        if found_vehicle:
+            self.vehicle_matricula.delete(0, tk.END)
+            self.vehicle_matricula.insert(0, found_vehicle.getMatricula())
+            self.vehicle_cliente.delete(0, tk.END)
+            self.vehicle_cliente.insert(0, found_vehicle.getCliente())
+            self.vehicle_marca.delete(0, tk.END)
+            self.vehicle_marca.insert(0, found_vehicle.getMarca())
+            self.vehicle_modelo.delete(0, tk.END)
+            self.vehicle_modelo.insert(0, found_vehicle.getModelo())
+            self.vehicle_color.delete(0, tk.END)
+            self.vehicle_color.insert(0, found_vehicle.getColor())
+        else:
+            messagebox.showerror("Error", "Vehículo no encontrado")
+
+    def save_vehicle(self):
+        db_vehicle = db_vehiculo.DbVehiculo()
+        vehicle = vehiculo.Vehiculo()
+        vehicle.setMatricula(self.vehicle_matricula.get())
+        vehicle.setCliente(self.vehicle_cliente.get())
+        vehicle.setMarca(self.vehicle_marca.get())
+        vehicle.setModelo(self.vehicle_modelo.get())
+        vehicle.setColor(self.vehicle_color.get())
+        
+        db_vehicle.save(vehicle)
+        messagebox.showinfo("Info", "Vehículo guardado exitosamente")
+
+    def edit_vehicle(self):
+        db_vehicle = db_vehiculo.DbVehiculo()
+        vehicle = vehiculo.Vehiculo()
+        vehicle.setMatricula(self.vehicle_matricula.get())
+        vehicle.setCliente(self.vehicle_cliente.get())
+        vehicle.setMarca(self.vehicle_marca.get())
+        vehicle.setModelo(self.vehicle_modelo.get())
+        vehicle.setColor(self.vehicle_color.get())
+        
+        db_vehicle.edit(vehicle)
+        messagebox.showinfo("Info", "Vehículo editado exitosamente")
+
+    def remove_vehicle(self):
+        db_vehicle = db_vehiculo.DbVehiculo()
+        vehicle = vehiculo.Vehiculo()
+        vehicle.setMatricula(self.vehicle_matricula.get())
+        
+        db_vehicle.remove(vehicle)
+        messagebox.showinfo("Info", "Vehículo eliminado exitosamente")
 
 # Add this at the bottom of main.py
 if __name__ == "__main__":
